@@ -174,9 +174,9 @@ def main(a, b, output_file):
 
 def cli():
     parser = argparse.ArgumentParser(description='Find discrepancies in JSON Files!\nMade with Python 3.10.10 with default libraries only, but will probably run on 3.5+\nJohn Lee, 2023', formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('source', type=str, help='Called A. Can be a file or directory.')
-    parser.add_argument('target', type=str, nargs='+', help='Called B, C, D... Should be equivalent to A.')
-    parser.add_argument('-o', '--output', type=str, required=False, default='no_tracking/output.json', help='Output file name (in JSON). Default is ./output.json.')
+    parser.add_argument('source', type=str, help='AKA "A". Can be a file or directory.')
+    parser.add_argument('target', type=str, nargs='+', help='AKA "B, C, D...". Should be equivalent to A.')
+    parser.add_argument('-o', '--output', type=str, required=False, default='output.json', help='Output file name (in JSON). Default is ./output.json.')
 
     args = parser.parse_args()
 
