@@ -32,19 +32,22 @@ def find_discrepancies(lst):
     for key, value in lst[0]['data'].items():
         for component in lst[1:]:
             if key not in component['data']:
-                discrepancies[key][component['file']] = 'Key Does Not Exist.'
+                if key not in discrepancies:
+                    discrepancies[key] = {}
+                discrepancies[key][component['name']] = 'Key Does Not Exist.'
             else:
                 if value != component['data'][key]:
                     if key not in discrepancies:
                         discrepancies[key] = {}
-                    discrepancies[key][lst[0]['file']] = value
-                    discrepancies[key][component['file']] = component['data'][key]
+                    discrepancies[key][lst[0]['name']] = value
+                    discrepancies[key][component['name']] = component['data'][key]
                 component['data'].pop(key)
     
     for component in lst[1:]:
-        for key, value in component['data']:
-            discrepancies[key][lst[0]['file']] = 'Key Does Not Exist.'
-            discrepancies[key][component['file']] = value
+        for key, value in component['data'].items():
+            if key not in discrepancies:
+                discrepancies[key] = {}
+            discrepancies[key][component['name']] = value
     
     return discrepancies
 
@@ -62,16 +65,14 @@ def get_json_files_from_dir(dir):
 
 def compare_json_files(files):
     lst = []
-    print('\n---- Comparing {}...'.format(files))
-    for file in files:
-        raw_data = read_json(file)
+    for item in files:
+        raw_data = read_json(item['file'])
         data = flatten_json(raw_data)
         lst.append({
-            'file': file,
+            'name': item['group'],
             'data': data
         })
     discrepancies = find_discrepancies(lst)
-    print('===> Discrepancies: {}'.format(discrepancies))
     return discrepancies
 
 
@@ -126,36 +127,49 @@ def main(a, b, output_file):
     with open(output_file, 'w') as f:
         f.write('[\n')
     
+    files = []
+    
     # 파일 모드인 경우, 비교 1회 수행하고 종료
     if mode == 'file':
         print('---- Running in Files Mode...')
-        result = compare_json_files(lst)
+        for file in lst:
+            files.append({
+                'group': file,
+                'file': file
+            })
+        result = compare_json_files(files)
         s = ', '.join([str(item) for item in lst])
         write_output(s, result, output_file)
         sign_off(output_file)
         print('\n=-=-=-= Job Done =-=-=-=\n')
         return None
     
-    # 디렉토리 모드인 경우, A 하위 경로의 모든 JSON 파일을 찾아 동일 경로에 동일 파일이 B 경로에도 존재하면 비교.
-    # A 혹은 B에만 존재하는 파일의 경우 아예 비교하지 않음. 따라서 결과에서도 제외됨.
+    # 디렉토리 모드인 경우, A 하위 경로의 모든 JSON 파일을 찾아 동일 경로에 동일 파일이 비교 대상(B, C, D...) 경로에도 존재하면 비교.
+    # A에만, 혹은 비교 대상(B, C, D...)에만 존재하는 파일의 경우 아예 비교하지 않음. 따라서 결과에서도 제외됨.
     if mode == 'dir':
         print('---- Running in Directories Mode...')
-        files = []
         for dir in lst:
-            files.append(get_json_files_from_dir(dir))
-
-        for key in files[0]:
-            l = [files[0][key]]
+            files.append({
+                'group': dir,
+                'files': get_json_files_from_dir(dir)
+            })
+        
+        for key, value in files[0]['files'].items():
+            compared_lst = [{
+                'group': files[0]['group'],
+                'file': value
+            }]
             for target in files[1:]:
-                if key in target:
-                    # l.append(target[key])
-                    l.append(target[key])
-            result = compare_json_files(l)
+                if key in target['files'].keys():
+                    compared_lst.append({
+                        'group': target['group'],
+                        'file': target['files'][key]
+                    })
+            result = compare_json_files(compared_lst)
             write_output(key, result, output_file)
-        sign_off(output_file)
 
-# main(a='./no_tracking/test.json', b='./no_tracking/test2.json', output_file='./no_tracking/output.json')  # 파일단위 비교 예시
-# main(a='./no_tracking/json_test1', b='./no_tracking/json_test2', output_file='./no_tracking/output.json')   # 디렉토리단위 비교 예시
+        sign_off(output_file)
+        print('\n=-=-=-= Job Done. Check your Output in {} =-=-=-=\n'.format(output_file))
 
 
 def cli():
